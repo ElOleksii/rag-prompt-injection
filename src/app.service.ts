@@ -14,9 +14,10 @@ export class AppService {
     // load
 
     const files = await this.loadDocuments('./data');
-    console.log(files[0].content.length);
 
     // split
+
+    return this.splitDocuments(files, 1000);
 
     // embed
     // store
@@ -52,5 +53,26 @@ export class AppService {
       console.error(e);
       return [];
     }
+  }
+  private splitDocuments(files: Document[], charLimit: number): Document[] {
+    const result: Document[] = [];
+
+    for (const file of files) {
+      if (file.content.length <= charLimit) {
+        result.push(file);
+        continue;
+      }
+
+      const sections = file.content.split(/(?=^##\s)/gm).filter(Boolean);
+
+      for (const section of sections) {
+        result.push({
+          ...file,
+          content: section.trim(),
+        });
+      }
+    }
+
+    return result;
   }
 }
