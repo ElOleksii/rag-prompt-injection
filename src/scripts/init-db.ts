@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import OpenAI from 'openai';
+import { pipeline } from '@huggingface/transformers';
 
 type Document = {
   fileName: string;
@@ -92,18 +92,31 @@ function splitDocuments(files: Document[], charLimit: number): Chunk[] {
   return result;
 }
 
-const client = new OpenAI();
-
 async function createEmbeddings(chunks: ChunkToEmbed[]): Promise<Chunk[]> {
-  const res = await client.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: chunks.map((c) => c.content),
-  });
+  const extractor = await pipeline(
+    'feature-extraction',
+    'Xenova/all-MiniLM-L6-v2',
+  );
 
-  console.log(res);
+  const output = await extractor(
+    chunks.map((c) => c.content),
+    { pooling: 'mean', normalize: true },
+  );
+
+  const embeddings = output.tolist() as number[][];
 
   return chunks.map((chunk, i) => ({
     ...chunk,
-    embedding: res.data[i].embedding,
+    embedding: embeddings[i],
   }));
 }
+
+initDB()
+  .then((chunks) => {
+    console.log(`Done. Created ${chunks.length} embedded chunks.`);
+    process.exit(0);
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
