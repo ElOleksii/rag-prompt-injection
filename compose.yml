@@ -10,6 +10,8 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+    environment:
+      - OPEN_API_KEY=${OPEN_API_KEY}
   postgres:
     image: pgvector/pgvector:pg18-trixie
     container_name: pgvector-db
