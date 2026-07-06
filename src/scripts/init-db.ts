@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { pipeline } from '@huggingface/transformers';
+import { FeatureExtractionPipeline, pipeline } from '@huggingface/transformers';
 import { Pool } from 'pg';
 import pgvector from 'pgvector/pg';
 
@@ -104,13 +104,22 @@ function splitDocuments(files: Document[], charLimit: number): Chunk[] {
   return result;
 }
 
+let extractorPromise: Promise<FeatureExtractionPipeline> | null = null;
+
+export function getExtractor() {
+  if (!extractorPromise) {
+    extractorPromise = pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+    );
+  }
+  return extractorPromise;
+}
+
 async function createEmbeddings(
   chunks: ChunkToEmbed[],
 ): Promise<EmbeddedChunk[]> {
-  const extractor = await pipeline(
-    'feature-extraction',
-    'Xenova/all-MiniLM-L6-v2',
-  );
+  const extractor = await getExtractor();
 
   const output = await extractor(
     chunks.map((c) => c.content),
