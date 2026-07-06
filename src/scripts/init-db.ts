@@ -1,6 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from '@huggingface/transformers';
+import { Pool } from 'pg';
+import pgvector from 'pgvector/pg';
 
 type Document = {
   fileName: string;
@@ -19,6 +21,14 @@ type EmbeddedChunk = Chunk & {
 
 type ChunkToEmbed = Omit<Chunk, 'embedding'>;
 
+const pool = new Pool({
+  user: 'postgres',
+  host: 'postgres',
+  database: 'vectordb',
+  password: 'postgrespass',
+  port: 5432,
+});
+
 async function initDB() {
   // load
 
@@ -32,9 +42,11 @@ async function initDB() {
 
   const embeddedChunks = await createEmbeddings(chunks);
 
-  return embeddedChunks;
-
   // store
+
+  await storeEmbeddings(embeddedChunks);
+
+  return embeddedChunks;
 }
 
 async function loadDocuments(dirPath: string): Promise<Document[]> {
@@ -92,7 +104,9 @@ function splitDocuments(files: Document[], charLimit: number): Chunk[] {
   return result;
 }
 
-async function createEmbeddings(chunks: ChunkToEmbed[]): Promise<Chunk[]> {
+async function createEmbeddings(
+  chunks: ChunkToEmbed[],
+): Promise<EmbeddedChunk[]> {
   const extractor = await pipeline(
     'feature-extraction',
     'Xenova/all-MiniLM-L6-v2',
@@ -111,8 +125,42 @@ async function createEmbeddings(chunks: ChunkToEmbed[]): Promise<Chunk[]> {
   }));
 }
 
+async function storeEmbeddings(embeddedChunks: EmbeddedChunk[]) {
+  const client = await pool.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    await client.query('TRUNCATE chunks RESTART IDENTITY');
+
+    for (const c of embeddedChunks) {
+      await client.query(
+        `INSERT INTO chunks (content, file_name, file_path, source, chunk_idx, embedding) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [
+          c.content,
+          c.fileName,
+          c.filePath,
+          c.source,
+          c.chunkIdx,
+          pgvector.toSql(c.embedding),
+        ],
+      );
+    }
+
+    await client.query('COMMIT');
+
+    console.log('data inserted');
+  } catch (e) {
+    await client.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 initDB()
   .then((chunks) => {
+    console.log(chunks);
     console.log(`Done. Created ${chunks.length} embedded chunks.`);
     process.exit(0);
   })

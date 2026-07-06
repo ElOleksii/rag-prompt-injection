@@ -10,8 +10,6 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-    environment:
-      - OPEN_API_KEY=${OPEN_API_KEY}
   postgres:
     image: pgvector/pgvector:pg18-trixie
     container_name: pgvector-db
@@ -23,6 +21,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
       - pgdata:/var/lib/postgresql
 volumes:
   pgdata:

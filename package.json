@@ -18,7 +18,10 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "init-db": "npx tsx src/scripts/init-db.ts"
+    "init-db": "npx tsx src/scripts/init-db.ts",
+    "db:reset": "docker compose down -v && docker compose up -d && node --import tsx src/scripts/init-db.ts",
+    "db:up": "docker compose up -d",
+    "seed": "node --import tsx src/scripts/init-db.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
@@ -26,7 +29,6 @@
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@types/pg": "^8.20.0",
-    "openai": "^6.45.0",
     "pg": "^8.22.0",
     "pgvector": "^0.3.0",
     "reflect-metadata": "^0.2.2",
@@ -54,6 +56,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.23.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
   },
