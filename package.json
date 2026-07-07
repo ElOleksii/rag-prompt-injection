@@ -19,7 +19,7 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "init-db": "npx tsx src/scripts/init-db.ts",
-    "db:reset": "docker compose down -v && docker compose up -d && node --import tsx src/scripts/init-db.ts",
+    "db:reset": "docker compose down -v && docker compose up -d && docker compose exec app node --import tsx src/scripts/init-db.ts",
     "db:up": "docker compose up -d",
     "seed": "node --import tsx src/scripts/init-db.ts"
   },

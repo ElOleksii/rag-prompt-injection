@@ -8,7 +8,6 @@ export class AppController {
   @Post('/ask')
   ask(@Body('question') question: string) {
     console.log('askQuestion called');
-
     return this.appService.askQuestion(question);
   }
 }

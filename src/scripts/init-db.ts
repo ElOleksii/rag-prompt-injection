@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { FeatureExtractionPipeline, pipeline } from '@huggingface/transformers';
-import { Pool } from 'pg';
 import pgvector from 'pgvector/pg';
+import { pool } from 'src/db';
+import { getExtractor } from 'src/extractor';
 
 type Document = {
   fileName: string;
@@ -21,14 +21,6 @@ type EmbeddedChunk = Chunk & {
 
 type ChunkToEmbed = Omit<Chunk, 'embedding'>;
 
-const pool = new Pool({
-  user: 'postgres',
-  host: 'postgres',
-  database: 'vectordb',
-  password: 'postgrespass',
-  port: 5432,
-});
-
 async function initDB() {
   // load
 
@@ -45,6 +37,8 @@ async function initDB() {
   // store
 
   await storeEmbeddings(embeddedChunks);
+
+  await pool.end();
 
   return embeddedChunks;
 }
@@ -104,18 +98,6 @@ function splitDocuments(files: Document[], charLimit: number): Chunk[] {
   return result;
 }
 
-let extractorPromise: Promise<FeatureExtractionPipeline> | null = null;
-
-export function getExtractor() {
-  if (!extractorPromise) {
-    extractorPromise = pipeline(
-      'feature-extraction',
-      'Xenova/all-MiniLM-L6-v2',
-    );
-  }
-  return extractorPromise;
-}
-
 async function createEmbeddings(
   chunks: ChunkToEmbed[],
 ): Promise<EmbeddedChunk[]> {
@@ -157,8 +139,6 @@ async function storeEmbeddings(embeddedChunks: EmbeddedChunk[]) {
     }
 
     await client.query('COMMIT');
-
-    console.log('data inserted');
   } catch (e) {
     await client.query('ROLLBACK');
     throw e;
@@ -169,7 +149,6 @@ async function storeEmbeddings(embeddedChunks: EmbeddedChunk[]) {
 
 initDB()
   .then((chunks) => {
-    console.log(chunks);
     console.log(`Done. Created ${chunks.length} embedded chunks.`);
     process.exit(0);
   })
