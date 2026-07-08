@@ -50,7 +50,9 @@ async function loadDocuments(dirPath: string): Promise<Document[]> {
       recursive: true,
     });
 
-    const files = entries.filter((e) => e.isFile());
+    const files = entries
+      .filter((e) => e.isFile())
+      .filter((e) => !e.parentPath.split(path.sep).includes('infra'));
 
     const documents = await Promise.all(
       files.map(async (entry) => {
@@ -61,11 +63,10 @@ async function loadDocuments(dirPath: string): Promise<Document[]> {
         const document: Document = {
           fileName: entry.name,
           filePath: fullPath,
-          content: content,
-          source:
-            entry.name[entry.name.length - 1] === 'tickets'
-              ? 'customer_ticket'
-              : 'internal_wiki',
+          content: content.replace(/\r\n/g, '\n'),
+          source: entry.parentPath.split(path.sep).includes('tickets')
+            ? 'customer_ticket'
+            : 'internal_wiki',
         };
 
         return document;
